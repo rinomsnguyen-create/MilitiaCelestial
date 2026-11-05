@@ -32,3 +32,37 @@ jobs:
         run: mypy src/militiacelestial
       - name: Pytest
         run: pytest -m "not docker"
+
+  sigma-build:
+    name: Sigma to Wazuh XML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install MilitiaCelestial
+        run: python -m pip install -e ".[dev]"
+
+      - name: Convert Sigma rules
+        run: |
+          mkdir -p build
+          militiacelestial convert tests/golden \
+            -o build/rules_sigma.xml \
+            --id-file build/sigma_ids.json \
+            --report build/sigma_report.md
+
+      - name: Validate Wazuh XML
+        run: militiacelestial validate build/rules_sigma.xml
+
+      - name: Upload Wazuh rules artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-sigma-rules
+          path: |
+            build/rules_sigma.xml
+            build/sigma_report.md
+            build/sigma_ids.json
